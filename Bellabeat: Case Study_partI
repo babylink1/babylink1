@@ -1,0 +1,143 @@
+#background:About the company
+#Urška Sršen and Sando Mur founded Bellabeat, a high-tech company that manufactures health-focused smart products. Sršen used her background as an artist to develop beautifully designed technology that informs and inspires women around the world. Collecting data on activity, sleep, stress, and reproductive health has allowed Bellabeat to empower women with knowledge about their own health and habits. Since it was founded in 2013, Bellabeat has grown rapidly and quickly positioned itself as a tech-driven wellness company for women.
+#By 2016, Bellabeat had opened offices around the world and launched multiple products. Bellabeat products became available through a growing number of online retailers in addition to their own e-commerce channel on their website. The company has invested in traditional advertising media, such as radio, out-of-home billboards, print, and television, but focuses on digital marketing extensively. Bellabeat invests year-round in Google Search, maintaining active Facebook and Instagram pages, and consistently engages consumers on Twitter. Additionally, Bellabeat runs video ads on Youtube and display ads on the Google Display Network to support campaigns around key marketing dates.
+#Sršen knows that an analysis of Bellabeat’s available consumer data would reveal more opportunities for growth. She has asked the marketing analytics team to focus on a Bellabeat product and analyze smart device usage data in order to gain insight into how people are already using their smart devices. Then, using this information, she would like high-level recommendations for how these trends can inform Bellabeat marketing strategy.
+
+#Characters and teams
+#Urška Sršen: Bellabeat’s cofounder and Chief Creative Officer
+#Sando Mur: Mathematician and Bellabeat’s cofounder; key member of the Bellabeat executive team
+#Bellabeat marketing analytics team: A team of data analysts responsible for collecting, analyzing, and reporting data that helps guide Bellabeat’s marketing strategy. You joined this team six months ago and have been busy learning about Bellabeat’’s mission and business goals — as well as how you, as a junior data analyst, can help Bellabeat achieve them.
+#Products
+#Bellabeat app: The Bellabeat app provides users with health data related to their activity, sleep, stress, menstrual cycle, and mindfulness habits. This data can help users better understand their current habits and make healthy decisions. The Bellabeat app connects to their line of smart wellness products.
+#Leaf: Bellabeat’s classic wellness tracker can be worn as a bracelet, necklace, or clip. The Leaf tracker connects to the Bellabeat app to track activity, sleep, and stress.
+#Time: This wellness watch combines the timeless look of a classic timepiece with smart technology to track user activity, sleep, and stress. The Time watch connects to the Bellabeat app to provide you with insights into your daily wellness.
+#Spring: This is a water bottle that tracks daily water intake using smart technology to ensure that you are appropriately hydrated throughout the day. The Spring bottle connects to the Bellabeat app to track your hydration levels.
+#Bellabeat membership: Bellabeat also offers a subscription-based membership program for users. Membership gives users 24/7 access to fully personalized guidance on nutrition, activity, sleep, health and beauty, and mindfulness based on their lifestyle and goals.
+
+
+#Ask
+#What are some trends in smart device usage?
+#How could these trends apply to Bellabeat customers?
+#How could these trends help influence Bellabeat marketing strategy?
+
+#Key deliverables
+#A clear summary of the business task
+#A description of all data sources used
+#Documentation of any cleaning or manipulation of data
+#A summary of your analysis
+#Supporting visualizations and key findings
+#Your top high-level content recommendations based on your analysis
+
+###############This is the first part of my analysis for this project. after unzipped the files and browsed each files, the dailyActivities_merged.csv and dailysleep.csv were firstly read and analyzed.
+################The purpose is to get have a general idea about the trend of smart device usage,in that most of the variables are involved.
+
+
+##package
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+#select the dataset from the zip files 
+#a The Leaf trackers capture the data of activeity,sleep and stress, also the dataset include different meaningful variables for analyzing.
+daily_activities<-read.csv("/Users/a1/Desktop/case2/dailyActivity_merged.csv")
+daily_calories <- read.csv("/Users/a1/Desktop/case2/dailyCalories_merged.csv")
+hourly_calories<-read.csv("/Users/a1/Desktop/case2/hourlyCalories_merged.csv")
+hourly_intensities <- read.csv("/Users/a1/Desktop/case2/hourlyIntensities_merged.csv")
+daily_sleep<- read.csv("/Users/a1/Desktop/case2/sleepDay_merged.csv")
+weight_Log <- read.csv("/Users/a1/Desktop/case2/weightLogInfo_merged.csv")
+daily_steps<- read.csv("/Users/a1/Desktop/case2/dailySteps_merged.csv")
+heart_rate<-read.csv("/Users/a1/Desktop/case2/heartrate_seconds_merged.csv")
+
+
+head(daily_activities)
+head(hourly_calories)
+head(daily_steps)
+head(daily_sleep)
+head(hourly_intensities)
+head(heart_rate)
+head(weight_log)
+
+##general analyzing the daily habit
+daily_activities%>%
+  select(TotalSteps,TotalDistance,SedentaryMinutes,Calories)%>%summary()
+
+#############correlation analysis 
+cor(daily_activities$TotalSteps,daily_activities$Calories,method="pearson",use="complete.obs")
+cor(daily_activities$TotalSteps,daily_activities$TotalDistance,method="pearson",use="complete.obs")
+
+##try linear model analysis
+library(caTools)
+
+##Column to be numeric
+str(daily_activities$Calories)
+daily_activities$Calories<-as.numeric(daily_activities$Calories)
+
+#random sampling
+set.seed(101)
+sample<-sample.split(daily_activities$Calories,SplitRatio=0.7)
+train<-subset(daily_activities,sample==TRUE)
+test<-subset(daily_activities,sample==FALSE)
+model1<-lm(Calories~TotalSteps,daily_activities)
+print(summary(model1))
+
+#reasiduals
+res<-residuals(model1)
+class(res)
+res<-as.data.frame(res)
+head(res)
+calories.predictions<-predict(model1,test)
+results<-cbind(calories.predictions,test$Calories)
+colnames(results)<-c('predicted','actual')
+results<-as.data.frame(results)
+so1<-function(x){
+  if(x<0){
+    return(0)
+  }else{
+    return(x)
+  }
+}
+results$predicted<-sapply(results$predicted,so1)
+mse<-mean((results$actual-results$predicted)^2)
+print(mse)
+print(mse^0.5)
+
+SSE<-sum((results$predicted-results$actual)^2)
+SST<-sum((mean(daily_activities$Calories)-results$actual)^2)
+         
+         
+R2<-1-SSE/SST
+print("R2")
+print(R2)
+######################################################################
+library(ggplot2)
+ggplot(daily_activities,aes(TotalSteps,Calories))+geom_point(alpha=0.3,aes(color=TotalSteps))+bw()
+###################################################################################################
+daily_steps1<- daily_activities %>%
+  mutate(TotalActiveMinutes = VeryActiveMinutes+FairlyActiveMinutes+LightlyActiveMinutes)
+
+
+steps <- ggplot(data=daily_steps1 aes(x=TotalSteps, y=TotalActiveMinutes)) + 
+  geom_point(color="#40916c") + 
+  geom_smooth(method = 'loess', formula = y ~ x, span = 0.3) +
+  labs(title="Daily steps vs. activity time", x="daily_steps", y="acitivty_minute")
+
+print(steps)
+######################################################################################################3#
+##daily sleep analyzing
+d_sleep%>%select(TotalSleepRecords,TotalMinutesAsleep,TotalTimeInBed)%>%summary()
+sleepcategories <- daily_sleep %>%  
+  group_by(Id) %>% 
+  summarise(avg_time_asleep = mean(TotalMinutesAsleep)) %>% 
+  mutate(type=case_when (
+    avg_time_asleep < 280 ~ "unhealthy sleep",
+    avg_time_asleep >=280 & avg_time_asleep <= 400 ~ "average sleep",
+    avg_time_asleep > 400 ~ "healthy sleep"))
+ 
+#brief: 1.the Linear model is not too much necessary here, but the calories is not so much positively related to daily activities, which means the effectiveness and 
+#is so different. We cannot say the clients do not care about this. More accurate calorie burning tips may help people find more effective ways to exercise.
+#2.comparing with other index, Sleep monitoring is not so important index ,but the accuracy become very important for the smart healthy device.
+#3.  
+    
+    
